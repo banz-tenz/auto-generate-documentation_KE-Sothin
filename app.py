@@ -54,3 +54,14 @@ def generate_certificates(output_folder, font_path = "arialdb.ttf", font_size = 
                         shape.text = shape.text.replace("{{your_name}}", name).replace("Your Name", name)
             output_path = os.path.join(output_folder, f"certificate_{name}.pptx")
             prs.save(output_path)
+
+# Functions for generating Transcripts (DOCX with placeholders)
+def TranscriptExcel():
+    filename = os.path.join(upload_folder, 'data.xlsx')
+    if not os.path.join.exists(filename):
+        raise FileNotFoundError("data.xlsx not found in upload folder.")
+    workbook = openpyxl.load_workbook(filename)
+    sheet = workbook.active
+    return list(sheet.values)
+
+    
