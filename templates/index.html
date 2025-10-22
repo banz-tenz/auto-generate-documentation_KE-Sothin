@@ -5,23 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Auto Document Generator</title>
     <link rel="stylesheet" href="../static/style/main.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css">
 </head>
 <body>
-    <main>
-        <div class="greet">
-            <h1>
-                Wellcom to Automated Document Generator
-            </h1>
-            <p>Enjoy with our system</p>
+    <form method="post">
+        <h1>Automated Document Generator</h1>
+        <div class="mb-3">
+            <label for="docx" class="form-label">Select kind of Document</label>
+            <select class="form-select" aria-label="Default select example" name="docx">
+                <option selected>Select kind of Document</option>
+                <option value="Certificate">Certificate</option>
+                <option value="Transcript">Transcript</option>
+                <option value="Completion certificate">Completion certificate</option>
+            </select>
         </div>
-        <div class="option">
-            <a href="/">
-                Generate Transcript
-            </a>
-            <a href="/">
-                Generate Certificate
-            </a>
+        <div class="mb-3">
+            <label for="template_file" class="form-label">Upload template(doc,pptx,image)</label>
+            <input class="form-control" type="file" id="formFile" name="template_file" required>
         </div>
-    </main>
+        <div class="mb-3">
+            <label for="excel_file" class="form-label">Upload your list(xlsx)</label>
+            <input class="form-control" type="file" id="formFileMultiple" required name="excel_file">
+        </div>
+        <button class="btn btn-primary" type="submit">Generate Now</button>
+        <button class="btn btn-primary" type="reset">Concel</button>
+    </form>
 </body>
 </html>
