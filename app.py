@@ -1,83 +1,153 @@
-from flask import Flask, render_template, request, flash, send_file, redirect, url_for
 import os
-import pandas as pd
-import openpyxl
+from flask import Flask, render_template, request, flash, redirect, url_for
+from werkzeug.utils import secure_filename
 from docxtpl import DocxTemplate
 from docx2pdf import convert
 from PIL import Image, ImageDraw, ImageFont
-from pptx import Presentation
-from pptx.util import Inches
-import zipfile
+import openpyxl
+import pandas as pd  # Removed pandas dependency for certificates to use openpyxl consistently
 from datetime import datetime
-import tempfile
-import shutil
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key_here'  # Change to a secure key
+app.secret_key = 'your_secret_key_here'  # Change this to a secure key
+UPLOAD_FOLDER = 'uploads'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Persistent work folder for uploads and reading
-WORK_FOLDER = 'temp/uploads'
-GENERATE_FOLDER = 'temp/generated'
-os.makedirs(WORK_FOLDER, exist_ok=True)
-os.makedirs(GENERATE_FOLDER, exist_ok=True)
+# Function for generating certificates (modified to use openpyxl consistently, assuming name in first column after header)
+def generate_certificates(excel_file, template_file, output_folder, font_path="arialbd.ttf", font_size=100):
+    workbook = openpyxl.load_workbook(excel_file)
+    sheet = workbook.active
+    data = list(sheet.values)[1:]  # Skip header row
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    font_name = ImageFont.truetype(font_path, font_size)
+    for row in data:
+        name = row[0]  # Assuming name is in the first column
+        certificate = Image.open(template_file)
+        width, height = certificate.size
+        draw = ImageDraw.Draw(certificate)
+        
+        name_position = (width//2, (height//2)+40)
+        draw.text(name_position, str(name), fill="navy", font=font_name, anchor='mm')
+        output_path = os.path.join(output_folder, "certificate_" + str(name) + ".png")
+        certificate.save(output_path)
+        print("Certificate generated for {} and saved to {}".format(name, output_path))
+    print("All certificates have been generated!")
 
-# Function for generating certificates (PNG or PPTX with placeholders)
-def generate_certificates(output_folder, font_path="arialbd.ttf", font_size=100):
-    excel_file = os.path.join(WORK_FOLDER, 'data.xlsx')
-    template_file = os.path.join(WORK_FOLDER, 'template.png')  # Or .pptx
-    if not os.path.exists(excel_file) or not os.path.exists(template_file):
-        raise FileNotFoundError("Required files (data.xlsx or template) not found in work_folder.")
-    
-    data = pd.read_excel(excel_file)
-    os.makedirs(output_folder, exist_ok=True)
-    if template_file.lower().endswith('.png') or template_file.lower().endswith('.jpg'):
-        # Image: Draw name (no placeholders, overlay text)
-        font_name = ImageFont.truetype(font_path, font_size)
-        for index, row in data.iterrows():
-            name = row["Name"]  # Full name from Excel
-            certificate = Image.open(template_file)
-            draw = ImageDraw.Draw(certificate)
-            width, height = certificate.size()
-            draw.text((width//2,700), name, fill="navy", font=font_name)
-            output_path = os.path.join(output_folder, f"certificate_{name}.png")
-            certificate.save(output_path)
-    elif template_file.lower().endswith('.pptx'):
-        # PPTX: Replace placeholders in text boxes
-        for index, row in data.iterrows():
-            name = row["Name"]
-            prs = Presentation(template_file)
-            for slide in prs.slides:
-                for shape in slide.shapes:
-                    if hasattr(shape, "text") and shape.text:
-                        # Replace placeholders (e.g., "Your Name" -> actual name)
-                        shape.text = shape.text.replace("{{your_name}}", name).replace("Your Name", name)
-            output_path = os.path.join(output_folder, f"certificate_{name}.pptx")
-            prs.save(output_path)
-
-# Functions for generating Transcripts (DOCX with placeholders)
-def TranscriptExcel_data():
-    filename = os.path.join(WORK_FOLDER, 'data.xlsx')
-    if not os.path.exists(filename):
-        raise FileNotFoundError("data.xlsx not found in work_folder.")
+# Functions for generating Associate Degree documents (unchanged)
+def AssociateExcel_data(filename):
     workbook = openpyxl.load_workbook(filename)
     sheet = workbook.active
     return list(sheet.values)
 
-def TranscriptDocument(output_directory, row_data):
-    template = os.path.join(WORK_FOLDER, 'template.docx')
-    if not os.path.exists(template):
-        raise FileNotFoundError("template.docx not found in work_folder.")
+def AssociateDocument(template, output_directory, student):
     doc = DocxTemplate(template)
     current_date = datetime.now().strftime("%B %d, %Y")
-    # Map placeholders to Excel data (adjust columns as needed)
     doc.render({
-        'your_name': row_data[1],  # First name
-        'your_surname': row_data[2],  # Last name
-        'student_id': row_data[0],
-        # Add more mappings if needed, e.g., 'your_grade': row_data[3]
+        'name_kh': student[2],
+        'g1': student[4],
+        'id_kh': student[0],
+        'name_e': student[3],
+        'g2': student[5],
+        'id_e': student[1],
+        'dob_kh': student[6],
+        'pro_kh': student[8],
+        'dob_e': student[7],
+        'pro_e': student[9],
+        'ed_kh': student[10],
+        'ed_e': student[11],
         'cur_date': current_date
     })
-    doc_name = os.path.join(output_directory, f"{row_data[1]}.docx")
+    doc_name = os.path.join(output_directory, "{}.docx".format(student[3]))
+    doc.save(doc_name)
+    return doc_name
+
+def AssociateConvertPDF(doc_path, pdf_directory):
+    pdf_path = os.path.join(pdf_directory, os.path.splitext(os.path.basename(doc_path))[0] + ".pdf")
+    convert(doc_path, pdf_path)
+    return pdf_path
+
+def GeneratAssociate(excel_file, template_file, docx_directory, pdf_directory, option):
+    os.makedirs(docx_directory, exist_ok=True)
+    os.makedirs(pdf_directory, exist_ok=True)
+    data_rows = AssociateExcel_data(excel_file)
+
+    for row in data_rows[1:]:
+        if option in ["doc", "both"]:
+            doc_path = AssociateDocument(template_file, docx_directory, row)
+        if option in ["pdf", "both"]:
+            if option == "pdf":
+                doc_path = AssociateDocument(template_file, pdf_directory, row)
+            AssociateConvertPDF(doc_path, pdf_directory)
+            if option == "pdf":
+                os.remove(doc_path)
+    print("All files for option '{}' have been generated!".format(option))
+
+# Functions for generating Transcripts (unchanged)
+def TranscriptExcel_data(filename):
+    workbook = openpyxl.load_workbook(filename)
+    sheet = workbook.active
+    return list(sheet.values)
+
+def TranscriptDocument(template, output_directory, row_data):
+    doc = DocxTemplate(template)
+    current_date = datetime.now().strftime("%B %d, %Y")
+    doc.render({
+        "student_id": row_data[0],
+        "first_name": row_data[1],
+        "last_name": row_data[2],
+        "logic": row_data[3],
+        "l_g": row_data[4],
+        "bcum": row_data[5],
+        "bc_g": row_data[6],
+        "design": row_data[7],
+        "d_g": row_data[8],
+        "p1": row_data[9],
+        "p1_g": row_data[10],
+        "e1": row_data[11],
+        "e1_g": row_data[12],
+        "wd": row_data[13],
+        "wd_g": row_data[14],
+        "algo": row_data[15],
+        "al_g": row_data[16],
+        "p2": row_data[17],
+        "p2_g": row_data[18],
+        "e2": row_data[19],
+        "e2_g": row_data[20],
+        "sd": row_data[21],
+        "sd_g": row_data[22],
+        "js": row_data[23],
+        "js_g": row_data[24],
+        "php": row_data[25],
+        "ph_g": row_data[26],
+        "db": row_data[27],
+        "db_g": row_data[28],
+        "vc1": row_data[29],
+        "v1_g": row_data[30],
+        "node": row_data[31],
+        "no_g": row_data[32],
+        "e3": row_data[33],
+        "e3_g": row_data[34],
+        "p3": row_data[35],
+        "p3_g": row_data[36],
+        "oop": row_data[37],
+        "op_g": row_data[38],
+        "lar": row_data[39],
+        "lar_g": row_data[40],
+        "vue": row_data[41],
+        "vu_g": row_data[42],
+        "vc2": row_data[43],
+        "v2_g": row_data[44],
+        "e4": row_data[45],
+        "e4_g": row_data[46],
+        "p4": row_data[47],
+        "p4_g": row_data[48],
+        "int": row_data[49],
+        "in_g": row_data[50],
+        'cur_date': current_date
+    })
+    doc_name = os.path.join(output_directory, "{}.docx".format(row_data[1]))
     doc.save(doc_name)
     return doc_name
 
@@ -86,85 +156,91 @@ def TranscriptPdf(doc_path, pdf_directory):
     convert(doc_path, pdf_path)
     return pdf_path
 
-def generate_transcripts(output_folder, option):
-    data_rows = TranscriptExcel_data()
-    docx_dir = os.path.join(output_folder, 'docx')
-    pdf_dir = os.path.join(output_folder, 'pdf')
-    os.makedirs(docx_dir, exist_ok=True)
-    os.makedirs(pdf_dir, exist_ok=True)
+def generate_transcripts(excel_file, template_file, docx_directory, pdf_directory, option):
+    os.makedirs(docx_directory, exist_ok=True)
+    os.makedirs(pdf_directory, exist_ok=True)
+    data_rows = TranscriptExcel_data(excel_file)
+
     for row in data_rows[1:]:
         if option in ["doc", "both"]:
-            doc_path = TranscriptDocument(docx_dir, row)
+            doc_path = TranscriptDocument(template_file, docx_directory, row)
         if option in ["pdf", "both"]:
             if option == "pdf":
-                doc_path = TranscriptDocument(pdf_dir, row)
-            TranscriptPdf(doc_path, pdf_dir)
+                doc_path = TranscriptDocument(template_file, pdf_directory, row)
+            TranscriptPdf(doc_path, pdf_directory)
             if option == "pdf":
                 os.remove(doc_path)
+    print("All files for option '{}' have been generated!".format(option))
+
+# Merged function to generate all documents (transcripts, certificates, associate)
+def generate_all(excel_transcript, template_transcript, excel_certificate, template_certificate, excel_associate, template_associate, option):
+    # Generate transcripts
+    docx_directory_transcript = 'Transcript_Doc'
+    pdf_directory_transcript = 'Transcript_PDF'
+    generate_transcripts(excel_transcript, template_transcript, docx_directory_transcript, pdf_directory_transcript, option)
+    
+    # Generate certificates
+    output_folder_cert = 'Certificates'
+    generate_certificates(excel_certificate, template_certificate, output_folder_cert)
+    
+    # Generate associate
+    docx_directory_associate = 'Associate_Documents'
+    pdf_directory_associate = 'Associate_PDF'
+    GeneratAssociate(excel_associate, template_associate, docx_directory_associate, pdf_directory_associate, option)
 
 @app.route('/')
-def index():
-    return render_template('index.html')
+def home():
+    return render_template('home.html')
+
+@app.route('/complete-info')
+def complete_info():
+    return render_template('complete_info.html')
 
 @app.route('/generate', methods=['POST'])
 def generate():
-    doc_type = request.form.get('doc_type')
-    template = request.files.get('template')
-    excel = request.files.get('excel')
-    option = request.form.get('option', 'both')
+    if request.method == 'POST':
+        doc_type = request.form.get('doc_type')
+        option = request.form.get('option')
+        template = request.files.get('template')
+        excel = request.files.get('excel')
+        
+        if not template or not excel:
+            flash('Please upload both template and Excel files.')
+            return redirect(url_for('complete_info'))
+        
+        template_filename = secure_filename(template.filename)
+        excel_filename = secure_filename(excel.filename)
+        template_path = os.path.join(app.config['UPLOAD_FOLDER'], template_filename)
+        excel_path = os.path.join(app.config['UPLOAD_FOLDER'], excel_filename)
+        template.save(template_path)
+        excel.save(excel_path)
+        
+        try:
+            if doc_type == 'transcript':
+                docx_directory = 'Transcript_Doc'
+                pdf_directory = 'Transcript_PDF'
+                generate_transcripts(excel_path, template_path, docx_directory, pdf_directory, option)
+            elif doc_type == 'certificate':
+                output_folder = 'Certificates'
+                generate_certificates(excel_path, template_path, output_folder)
+            elif doc_type == 'associate':
+                docx_directory = 'Associate_Documents'
+                pdf_directory = 'Associate_PDF'
+                GeneratAssociate(excel_path, template_path, docx_directory, pdf_directory, option)
+            else:
+                flash('Invalid document type.')
+                return redirect(url_for('complete_info'))
+            
+            flash('Documents generated successfully!')
+            return redirect(url_for('preview'))
+        except Exception as e:
+            flash(f'An error occurred: {str(e)}')
+            return redirect(url_for('complete_info'))
 
-    if not template or not excel:
-        flash('Please upload both template and Excel files.')
-        return redirect(url_for('index'))
-
-    # Save uploaded files to work_folder with fixed names
-    template_ext = os.path.splitext(template.filename)[1]
-    excel_ext = os.path.splitext(excel.filename)[1]
-    template_path = os.path.join(WORK_FOLDER, f'template{template_ext}')
-    excel_path = os.path.join(WORK_FOLDER, f'data{excel_ext}')
-    template.save(template_path)
-    excel.save(excel_path)
-
-    # Generate based on type (reads from work_folder)
-    output_folder = os.path.join(GENERATE_FOLDER, doc_type)
-    try:
-        if doc_type == 'certificate':
-            generate_certificates(output_folder)
-        elif doc_type == 'transcript':
-            generate_transcripts(output_folder, option)
-        flash('Documents generated successfully! Placeholders replaced with names from Excel.')
-    except Exception as e:
-        flash(f'Error generating documents: {str(e)}')
-
-    return redirect(url_for('preview', doc_type=doc_type))
-
-@app.route('/preview/<doc_type>')
-def preview(doc_type):
-    output_folder = os.path.join(GENERATE_FOLDER, doc_type)
-    files = []
-    if os.path.exists(output_folder):
-        for root, dirs, filenames in os.walk(output_folder):
-            for filename in filenames:
-                files.append(os.path.join(root, filename))
-    return render_template('preview.html', doc_type=doc_type, files=files[:5])
-
-@app.route('/download/<doc_type>')
-def download(doc_type):
-    output_folder = os.path.join(GENERATE_FOLDER, doc_type)
-    zip_path = os.path.join(GENERATE_FOLDER, f'{doc_type}_documents.zip')
-    with zipfile.ZipFile(zip_path, 'w') as zipf:
-        for root, dirs, files in os.walk(output_folder):
-            for file in files:
-                zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), output_folder))
-    shutil.rmtree(output_folder)
-    return send_file(zip_path, as_attachment=True, download_name=f'{doc_type}_documents.zip')
-
-@app.route('/uploaded_files')
-def uploaded_files():
-    files = []
-    if os.path.exists(WORK_FOLDER):
-        files = [f for f in os.listdir(WORK_FOLDER) if os.path.isfile(os.path.join(WORK_FOLDER, f))]
-    return render_template('uploaded_files.html', files=files)
+@app.route('/preview')
+def preview():
+    files = os.listdir(app.config['UPLOAD_FOLDER'])
+    return render_template('preview.html', files=files)
 
 if __name__ == '__main__':
     app.run(debug=True)

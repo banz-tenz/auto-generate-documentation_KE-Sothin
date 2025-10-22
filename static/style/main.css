@@ -9,6 +9,10 @@
 }
 
 
+.container{
+    width: 40%;
+}
+
 .greet{
     display: flex;
     justify-content: center;
