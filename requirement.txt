@@ -1,7 +1,7 @@
-Flask>=2.0
+flask
 pandas
 openpyxl
-python-docx
-python-pptx
-Pillow
-werkzeug
+docxtpl
+docx2pdf
+pillow
+python-pptxug

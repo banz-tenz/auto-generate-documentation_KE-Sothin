@@ -1,81 +1,56 @@
+from flask import Flask, render_template, request, flash, send_file, redirect, url_for
 import os
-import io
-import zipfile
-from flask import Flask, render_template, request, send_file
-import pandas as pd
+import pandas as pd 
+import openpyxl
+from docxtpl import DocxTemplate
+from docx2pdf import convert
 from PIL import Image, ImageDraw, ImageFont
+from pptx import Presentation
+from pptx.util import Inches
+import zipfile
+from datetime import datetime
+import tempfile
+import shutil
+
 
 app = Flask(__name__)
 
-# Folders
-UPLOAD_FOLDER = "uploads"
-OUTPUT_FOLDER = "generated_certificates"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(OUTPUT_FOLDER, exist_ok=True)
+app.secret_key = 'your_secert_key_here'
 
-# Font settings
-FONT_PATH = "arialbd.ttf"  # Make sure this font exists
-FONT_SIZE = 100
+upload_folder = 'temp/uploads'
+generate_folder = 'temp/generated'
+os.makedirs(upload_folder, exist_ok=True)
+os.makedirs(generate_folder, exist_ok=True)
 
-# ===== Certificate Generation Function =====
-def generate_certificates(excel_file_path, template_file_path):
-    data = pd.read_excel(excel_file_path)
-    generated_files = []
-
-    for index, row in data.iterrows():
-        name = row["Name"]
-        certificate = Image.open(template_file_path)
-        draw = ImageDraw.Draw(certificate)
-
-        # Position adjustment based on name length
-        if len(name) >= 15 and len(name) < 25:
-            name_position = (550, 600)
-        elif len(name) >= 10 and len(name) < 15:
-            name_position = (700, 600)
-        else:
-            name_position = (730, 600)
-
-        font = ImageFont.truetype(FONT_PATH, FONT_SIZE)
-        draw.text(name_position, name, fill="orange", font=font)
-
-        output_path = os.path.join(OUTPUT_FOLDER, f"certificate_{name}.png")
-        certificate.save(output_path)
-        generated_files.append(output_path)
-
-    return generated_files
-
-# ===== Routes =====
-@app.route("/", methods=["GET", "POST"])
-def index():
-    if request.method == "POST":
-        # Check uploaded files
-        if 'template_file' not in request.files or 'excel_file' not in request.files:
-            return "Please upload both Excel file and template PNG."
-
-        template_file = request.files['template_file']
-        excel_file = request.files['excel_file']
-
-        template_path = os.path.join(UPLOAD_FOLDER, template_file.filename)
-        excel_path = os.path.join(UPLOAD_FOLDER, excel_file.filename)
-
-        template_file.save(template_path)
-        excel_file.save(excel_path)
-
-        # Generate certificates
-        files = generate_certificates(excel_path, template_path)
-
-        # Create ZIP file
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(zip_buffer, "w") as zip_file:
-            for file_path in files:
-                zip_file.write(file_path, os.path.basename(file_path))
-
-        zip_buffer.seek(0)
-        return send_file(zip_buffer, mimetype='application/zip', as_attachment=True, download_name="certificates.zip")
-
-    # GET request → show form
-    return render_template("certificateUpload.html")
-
-# ===== Run App =====
-if __name__ == "__main__":
-    app.run(debug=True)
+# Function for generate certificate
+def generate_certificates(output_folder, font_path = "arialdb.ttf", font_size = 100):
+    excel_file = os.path.join(upload_folder, 'data.xlsx')
+    template_file = os.path.join(upload_folder, 'template.png')
+    if not os.path.exists(excel_file) or not os.path.exists(template_file):
+        raise FileNotFoundError("Required files (data.xlsx or template) not found in work_folder.")
+    
+    data = pd.read_excel(excel_file)
+    os.makedirs(output_folder, exist_ok=True)
+    if template_file.lower().endswith('.png') or template_file.lower().endswith('.jpg'):
+        # Image: Draw name (no placeholders, overlay text)
+        font_name = ImageFont.truetype(font_path, font_size)
+        for index, row in data.iterrows():
+            name = row["Name"]  # Full name from Excel
+            certificate = Image.open(template_file)
+            width,height = certificate.size()
+            draw = ImageDraw.Draw(certificate)
+            draw.text((width//2,700), name, fill="orange", font=font_name, anchor='mm')
+            output_path = os.path.join(output_folder, f"certificate_{name}.png")
+            certificate.save(output_path)
+    elif template_file.lower().endswith('.pptx'):
+        # PPTX: Replace placeholders in text boxes
+        for index, row in data.iterrows():
+            name = row["Name"]
+            prs = Presentation(template_file)
+            for slide in prs.slides:
+                for shape in slide.shapes:
+                    if hasattr(shape, "text") and shape.text:
+                        # Replace placeholders (e.g., "Your Name" -> actual name)
+                        shape.text = shape.text.replace("{{your_name}}", name).replace("Your Name", name)
+            output_path = os.path.join(output_folder, f"certificate_{name}.pptx")
+            prs.save(output_path)
