@@ -4,4 +4,4 @@ openpyxl
 docxtpl
 docx2pdf
 pillow
-python-pptxug
+python-pptx
