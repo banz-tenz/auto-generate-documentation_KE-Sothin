@@ -69,3 +69,20 @@ def TranscriptPdf(doc_path, pdf_directory):
     pdf_path = os.path.join(pdf_directory, os.path.splitext(os.path.basename(doc_path))[0] + ".pdf")
     convert(doc_path, pdf_path)
     return pdf_path
+
+
+def generate_transcripts(output_folder, option):
+    data_rows = TranscriptExcel_data()
+    docx_dir = os.path.join(output_folder, 'docx')
+    pdf_dir = os.path.join(output_folder, 'pdf')
+    os.makedirs(docx_dir, exist_ok=True)
+    os.makedirs(pdf_dir, exist_ok=True)
+    for row in data_rows[1:]:
+        if option in ["doc", "both"]:
+            doc_path = TranscriptDocument(docx_dir, row)
+        if option in ["pdf", "both"]:
+            if option == "pdf":
+                doc_path = TranscriptDocument(pdf_dir, row)
+            TranscriptPdf(doc_path, pdf_dir)
+            if option == "pdf":
+                os.remove(doc_path)
