@@ -64,4 +64,8 @@ def TranscriptExcel():
     sheet = workbook.active
     return list(sheet.values)
 
-    
+
+def TranscriptPdf(doc_path, pdf_directory):
+    pdf_path = os.path.join(pdf_directory, os.path.splitext(os.path.basename(doc_path))[0] + ".pdf")
+    convert(doc_path, pdf_path)
+    return pdf_path
