@@ -7,6 +7,10 @@ from PIL import Image, ImageDraw, ImageFont
 import openpyxl
 import pandas as pd  # Removed pandas dependency for certificates to use openpyxl consistently
 from datetime import datetime
+from pptx import Presentation
+from pptx.enum.text import PP_ALIGN  # For text alignment
+from pptx.util import Pt  # For font size in points
+from pptx.dml.color import RGBColor  # For font color
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'  # Change this to a secure key
@@ -15,7 +19,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Function for generating certificates (modified to use openpyxl consistently, assuming name in first column after header)
-def generate_certificates(excel_file, template_file, output_folder, font_path="arialbd.ttf", font_size=100):
+def generate_certificates(excel_file, template_file, output_folder, template_filename,option,font_path="arialbd.ttf", font_size=100):
     workbook = openpyxl.load_workbook(excel_file)
     sheet = workbook.active
     data = list(sheet.values)[1:]  # Skip header row
@@ -24,65 +28,98 @@ def generate_certificates(excel_file, template_file, output_folder, font_path="a
     font_name = ImageFont.truetype(font_path, font_size)
     for row in data:
         name = row[0]  # Assuming name is in the first column
-        certificate = Image.open(template_file)
-        width, height = certificate.size
-        draw = ImageDraw.Draw(certificate)
-        
-        name_position = (width//2, (height//2)+40)
-        draw.text(name_position, str(name), fill="navy", font=font_name, anchor='mm')
-        output_path = os.path.join(output_folder, "certificate_" + str(name) + ".png")
-        certificate.save(output_path)
-        print("Certificate generated for {} and saved to {}".format(name, output_path))
+        if template_filename.lower().endswith('.png') or template_filename.lower().endswith('.jpg'):
+            certificate = Image.open(template_file)
+            width, height = certificate.size
+            draw = ImageDraw.Draw(certificate)
+            
+            name_position = (width//2, (height//2)+40)
+            draw.text(name_position, str(name), fill="navy", font=font_name, anchor='mm')
+            output_path = os.path.join(output_folder, "certificate_" + str(name) + ".png")
+            certificate.save(output_path)
+            print("Certificate generated for {} and saved to {}".format(name, output_path))
+        elif template_filename.lower().endswith(".pptx"):
+            # Use python-pptx for PPTX templates with placeholders
+            prs = Presentation(template_file)
+            for slide in prs.slides:
+                for shape in slide.shapes:
+                    if hasattr(shape, "text_frame"):
+                        text_frame = shape.text_frame
+                        for paragraph in text_frame.paragraphs:
+                            full_text = paragraph.text
+                            if "{{your_name}}" in full_text:
+                                paragraph.text = full_text.replace("{{your_name}}", str(name))
+                                # Apply formatting to the runs containing the name
+                                for run in paragraph.runs:
+                                    if str(name) in run.text:  # Ensure the run contains the replaced name
+                                        run.font.name = 'Arial'
+                                        run.font.size = Pt(54)  # Use Pt() for points
+                                        run.font.bold = True
+                                        run.font.color.rgb = RGBColor(0, 0, 128)
+                                # Set paragraph alignment to justify
+                                paragraph.alignment = PP_ALIGN.CENTER
+                                print(f"Replaced {{your_name}} with {name} in paragraph.")  # Debug print
+            # Save as PPTX
+            output_path_pptx = os.path.join(output_folder, "certificate_" + str(name) + ".pptx")
+            prs.save(output_path_pptx)
+            output_path = output_path_pptx
+            # If PDF is needed, convert
+            if option in ['pdf', 'both']:
+                pdf_path = os.path.join(output_folder, "certificate_" + str(name) + ".pdf")
+                convert(output_path_pptx, pdf_path)
+                if option == 'pdf':
+                    os.remove(output_path_pptx)
+                    output_path = pdf_path
     print("All certificates have been generated!")
 
-# Functions for generating Associate Degree documents (unchanged)
-def AssociateExcel_data(filename):
-    workbook = openpyxl.load_workbook(filename)
-    sheet = workbook.active
-    return list(sheet.values)
+# # Functions for generating Associate Degree documents (unchanged)
+# def AssociateExcel_data(filename):
+#     workbook = openpyxl.load_workbook(filename)
+#     sheet = workbook.active
+#     return list(sheet.values)
 
-def AssociateDocument(template, output_directory, student):
-    doc = DocxTemplate(template)
-    current_date = datetime.now().strftime("%B %d, %Y")
-    doc.render({
-        'name_kh': student[2],
-        'g1': student[4],
-        'id_kh': student[0],
-        'name_e': student[3],
-        'g2': student[5],
-        'id_e': student[1],
-        'dob_kh': student[6],
-        'pro_kh': student[8],
-        'dob_e': student[7],
-        'pro_e': student[9],
-        'ed_kh': student[10],
-        'ed_e': student[11],
-        'cur_date': current_date
-    })
-    doc_name = os.path.join(output_directory, "{}.docx".format(student[3]))
-    doc.save(doc_name)
-    return doc_name
+# def AssociateDocument(template, output_directory, student):
+#     doc = DocxTemplate(template)
+#     current_date = datetime.now().strftime("%B %d, %Y")
+#     doc.render({
+#         'name_kh': student[2],
+#         'g1': student[4],
+#         'id_kh': student[0],
+#         'name_e': student[3],
+#         'g2': student[5],
+#         'id_e': student[1],
+#         'dob_kh': student[6],
+#         'pro_kh': student[8],
+#         'dob_e': student[7],
+#         'pro_e': student[9],
+#         'ed_kh': student[10],
+#         'ed_e': student[11],
+#         'cur_date': current_date
+#     })
+#     doc_name = os.path.join(output_directory, "{}.docx".format(student[3]))
+#     doc.save(doc_name)
+#     return doc_name
 
-def AssociateConvertPDF(doc_path, pdf_directory):
-    pdf_path = os.path.join(pdf_directory, os.path.splitext(os.path.basename(doc_path))[0] + ".pdf")
-    convert(doc_path, pdf_path)
-    return pdf_path
+# def AssociateConvertPDF(doc_path, pdf_directory):
+#     pdf_path = os.path.join(pdf_directory, os.path.splitext(os.path.basename(doc_path))[0] + ".pdf")
+#     convert(doc_path, pdf_path)
+#     return pdf_path
 
-def GeneratAssociate(excel_file, template_file, docx_directory, pdf_directory, option):
-    os.makedirs(docx_directory, exist_ok=True)
-    os.makedirs(pdf_directory, exist_ok=True)
-    data_rows = AssociateExcel_data(excel_file)
+# def GeneratAssociate(excel_file, template_file, docx_directory, pdf_directory, option):
+#     os.makedirs(docx_directory, exist_ok=True)
+#     os.makedirs(pdf_directory, exist_ok=True)
+#     data_rows = AssociateExcel_data(excel_file)
 
-    for row in data_rows[1:]:
-        if option in ["doc", "both"]:
-            doc_path = AssociateDocument(template_file, docx_directory, row)
-        if option in ["pdf", "both"]:
-            if option == "pdf":
-                doc_path = AssociateDocument(template_file, pdf_directory, row)
-            AssociateConvertPDF(doc_path, pdf_directory)
-            if option == "pdf":
-                os.remove(doc_path)
-    print("All files for option '{}' have been generated!".format(option))
+#     for row in data_rows[1:]:
+#         if option in ["doc", "both"]:
+#             doc_path = AssociateDocument(template_file, docx_directory, row)
+#         if option in ["pdf", "both"]:
+#             if option == "pdf":
+#                 doc_path = AssociateDocument(template_file, pdf_directory, row)
+#             AssociateConvertPDF(doc_path, pdf_directory)
+#             if option == "pdf":
+#                 os.remove(doc_path)
+#     print("All files for option '{}' have been generated!".format(option))
 
 # Functions for generating Transcripts (unchanged)
 def TranscriptExcel_data(filename):
@@ -204,6 +241,7 @@ def generate():
         template = request.files.get('template')
         excel = request.files.get('excel')
         
+
         if not template or not excel:
             flash('Please upload both template and Excel files.')
             return redirect(url_for('complete_info'))
@@ -222,11 +260,7 @@ def generate():
                 generate_transcripts(excel_path, template_path, docx_directory, pdf_directory, option)
             elif doc_type == 'certificate':
                 output_folder = 'Certificates'
-                generate_certificates(excel_path, template_path, output_folder)
-            elif doc_type == 'associate':
-                docx_directory = 'Associate_Documents'
-                pdf_directory = 'Associate_PDF'
-                GeneratAssociate(excel_path, template_path, docx_directory, pdf_directory, option)
+                generate_certificates(excel_path, template_path, output_folder,template_filename, option)
             else:
                 flash('Invalid document type.')
                 return redirect(url_for('complete_info'))
