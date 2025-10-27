@@ -6,11 +6,44 @@
     margin: 0;
     box-sizing: border-box;
     font-family: "Roboto", sans-serif;
+    color: white;
+}
+
+#background {
+    position: fixed; /* Use fixed for full viewport coverage */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh; /* 100% of viewport height */
+    z-index: -1; /* Ensures it stays behind your content */
+}
+
+.container{
+    background-color: rgba(0, 208, 255, 0.23);
+    padding: 20px;
+    border-radius: 20px;
+    backdrop-filter: blur(4px);
 }
 
 
-.container{
-    width: 40%;
+.container-com{
+    width: 60%;
+    display: flex;
+    justify-content: center;
+    gap: 48px;
+    align-items: center;
+}
+
+.container .image{
+    width: 50%;
+    height: 100%;
+}
+
+.container .image img{
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
+    border-radius: 20px;
 }
 
 .greet{
@@ -25,3 +58,4 @@
 .greet a {
     margin-top: 32px;
 }
+
