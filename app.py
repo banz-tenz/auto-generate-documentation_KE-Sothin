@@ -72,54 +72,6 @@ def generate_certificates(excel_file, template_file, output_folder, template_fil
                     output_path = pdf_path
     print("All certificates have been generated!")
 
-# # Functions for generating Associate Degree documents (unchanged)
-# def AssociateExcel_data(filename):
-#     workbook = openpyxl.load_workbook(filename)
-#     sheet = workbook.active
-#     return list(sheet.values)
-
-# def AssociateDocument(template, output_directory, student):
-#     doc = DocxTemplate(template)
-#     current_date = datetime.now().strftime("%B %d, %Y")
-#     doc.render({
-#         'name_kh': student[2],
-#         'g1': student[4],
-#         'id_kh': student[0],
-#         'name_e': student[3],
-#         'g2': student[5],
-#         'id_e': student[1],
-#         'dob_kh': student[6],
-#         'pro_kh': student[8],
-#         'dob_e': student[7],
-#         'pro_e': student[9],
-#         'ed_kh': student[10],
-#         'ed_e': student[11],
-#         'cur_date': current_date
-#     })
-#     doc_name = os.path.join(output_directory, "{}.docx".format(student[3]))
-#     doc.save(doc_name)
-#     return doc_name
-
-# def AssociateConvertPDF(doc_path, pdf_directory):
-#     pdf_path = os.path.join(pdf_directory, os.path.splitext(os.path.basename(doc_path))[0] + ".pdf")
-#     convert(doc_path, pdf_path)
-#     return pdf_path
-
-# def GeneratAssociate(excel_file, template_file, docx_directory, pdf_directory, option):
-#     os.makedirs(docx_directory, exist_ok=True)
-#     os.makedirs(pdf_directory, exist_ok=True)
-#     data_rows = AssociateExcel_data(excel_file)
-
-#     for row in data_rows[1:]:
-#         if option in ["doc", "both"]:
-#             doc_path = AssociateDocument(template_file, docx_directory, row)
-#         if option in ["pdf", "both"]:
-#             if option == "pdf":
-#                 doc_path = AssociateDocument(template_file, pdf_directory, row)
-#             AssociateConvertPDF(doc_path, pdf_directory)
-#             if option == "pdf":
-#                 os.remove(doc_path)
-#     print("All files for option '{}' have been generated!".format(option))
 
 # Functions for generating Transcripts (unchanged)
 def TranscriptExcel_data(filename):
