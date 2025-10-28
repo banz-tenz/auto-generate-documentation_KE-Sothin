@@ -11,12 +11,11 @@
         <div class="image">
             <img src="../static/images/1e3d236f5523043a2eda4d4f644233de.jpg" alt="">
         </div>
-        <form action="/generate" method="post" enctype="multipart/form-data">
+        <form action="/generate-multipule" method="post" enctype="multipart/form-data">
             <h1 class="text-center">Automated Document Generation</h1>
             <div class="mb-3">
                 <label for="doc_type" class="form-label">Document Type</label>
                 <select class="form-select" id="doc_type" name="doc_type" required>
-                    <option value="transcript">Transcript</option>
                     <option value="certificate">Certificate</option>
                 </select>
             </div>
@@ -28,15 +27,8 @@
                 <label for="excel" class="form-label">Upload Student Data (Excel)</label>
                 <input class="form-control" type="file" id="excel" name="excel" accept=".xlsx,.xls" required>
             </div>
-            <div class="mb-3">
-                <label for="option" class="form-label">Output Format (No need for Image Template)</label>
-                <select class="form-select" id="option" name="option">
-                    <option value="doc">DOCX Only</option>
-                    <option value="pdf">PDF Only</option>
-                    <option value="both">Both DOCX and PDF</option>
-                </select>
-            </div>
             <button type="submit" class="btn btn-primary">Generate</button>
+            <button type="reset" class="btn btn-primary">Concel</button>
             {% with messages = get_flashed_messages() %}
                 {% if messages %}
                     <div class="alert alert-info mt-3">{{ messages[0] }}</div>

@@ -18,12 +18,16 @@
     z-index: -1; /* Ensures it stays behind your content */
 }
 
-.container{
+.container {
     background-color: rgba(0, 208, 255, 0.23);
     padding: 20px;
     border-radius: 20px;
     backdrop-filter: blur(4px);
+    overflow-y: auto; /* Changed to auto for better scrolling when content exceeds height */
+    max-height: 80vh; /* Added max-height to prevent overflow and ensure scrolling works */
+    margin-top: 20px; /* Added margin for better spacing from top */
 }
+
 
 
 .container-com{
@@ -36,7 +40,7 @@
 
 .container .image{
     width: 50%;
-    height: 100%;
+    height: 80;
 }
 
 .container .image img{
@@ -61,4 +65,54 @@
 
 option{
     color: black;
+}
+
+label {
+    color: black;
+}
+
+
+/* Base styles */
+#background {
+    position: fixed; /* Use fixed for full viewport coverage */
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh; /* 100% of viewport height */
+    z-index: -1; /* Ensures it stays behind your content */
+}
+
+.container {
+    background-color: rgba(0, 208, 255, 0.23);
+    padding: 20px;
+    border-radius: 20px;
+    backdrop-filter: blur(4px);
+    overflow-y: auto; /* Scrollbar only when needed */
+    max-height: 80vh; /* Limit height for scrolling */
+    margin-top: 20px; /* Space from top */
+    margin-left: auto;
+    margin-right: auto;
+    width: 90%; /* Default width for larger screens */
+    max-width: 1200px; /* Max width to prevent too wide on large screens */
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) { /* Tablet and mobile */
+    .container {
+        padding: 15px; /* Reduce padding on smaller screens */
+        border-radius: 15px; /* Slightly smaller border-radius */
+        max-height: 85vh; /* Allow more height on mobile for better usability */
+        width: 95%; /* Wider on small screens */
+        margin-top: 10px; /* Less top margin */
+    }
+}
+
+@media (max-width: 480px) { /* Small mobile devices */
+    .container {
+        padding: 10px; /* Even smaller padding */
+        border-radius: 10px; /* Smaller border-radius */
+        max-height: 90vh; /* Maximize height for small screens */
+        width: 98%; /* Almost full width */
+        margin-top: 5px; /* Minimal top margin */
+    }
 }
