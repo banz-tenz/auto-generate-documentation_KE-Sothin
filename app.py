@@ -232,7 +232,7 @@ def home():
 
 @app.route('/complete-info-multiple')
 def complete_info_multiple():
-    return render_template('complete_info_multiple.html')
+    return render_template('complete_certificate_info_multiple.html')
 
 @app.route('/generate-multipule', methods=['POST'])
 def generate_multiple():
