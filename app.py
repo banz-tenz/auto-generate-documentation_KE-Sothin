@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, flash, redirect, url_for
+from flask import Flask, render_template, request, flash, redirect, url_for, send_file
 from werkzeug.utils import secure_filename
 from docxtpl import DocxTemplate
 from docx2pdf import convert
@@ -11,6 +11,8 @@ from pptx import Presentation
 from pptx.enum.text import PP_ALIGN  # For text alignment
 from pptx.util import Pt  # For font size in points
 from pptx.dml.color import RGBColor  # For font color
+import zipfile
+import io
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'  # Change this to a secure key
@@ -19,13 +21,14 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Function for generating certificates (modified to use openpyxl consistently, assuming name in first column after header)
-def generate_certificates(excel_file, template_file, output_folder, template_filename,option,font_path="arialbd.ttf", font_size=100):
+def generate_certificates(excel_file, template_file, output_folder, template_filename, option, font_path="arialbd.ttf", font_size=100):
     workbook = openpyxl.load_workbook(excel_file)
     sheet = workbook.active
     data = list(sheet.values)[1:]  # Skip header row
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
     font_name = ImageFont.truetype(font_path, font_size)
+    generated_files = []
     for row in data:
         name = row[0]  # Assuming name is in the first column
         if template_filename.lower().endswith('.png') or template_filename.lower().endswith('.jpg'):
@@ -37,6 +40,7 @@ def generate_certificates(excel_file, template_file, output_folder, template_fil
             draw.text(name_position, str(name), fill="navy", font=font_name, anchor='mm')
             output_path = os.path.join(output_folder, "certificate_" + str(name) + ".png")
             certificate.save(output_path)
+            generated_files.append(output_path)
             print("Certificate generated for {} and saved to {}".format(name, output_path))
         elif template_filename.lower().endswith(".pptx"):
             # Use python-pptx for PPTX templates with placeholders
@@ -63,6 +67,7 @@ def generate_certificates(excel_file, template_file, output_folder, template_fil
             output_path_pptx = os.path.join(output_folder, "certificate_" + str(name) + ".pptx")
             prs.save(output_path_pptx)
             output_path = output_path_pptx
+            generated_files.append(output_path)
             # If PDF is needed, convert
             if option in ['pdf', 'both']:
                 pdf_path = os.path.join(output_folder, "certificate_" + str(name) + ".pdf")
@@ -70,8 +75,26 @@ def generate_certificates(excel_file, template_file, output_folder, template_fil
                 if option == 'pdf':
                     os.remove(output_path_pptx)
                     output_path = pdf_path
+                generated_files.append(pdf_path)
     print("All certificates have been generated!")
+    return generated_files
 
+# Function for generating individual certificate
+def generate_individual_certificate(name, template_file, output_folder, template_filename, font_path="arialbd.ttf", font_size=100):
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+    font_name = ImageFont.truetype(font_path, font_size)
+    if template_filename.lower().endswith('.png') or template_filename.lower().endswith('.jpg'):
+        certificate = Image.open(template_file)
+        width, height = certificate.size
+        draw = ImageDraw.Draw(certificate)
+        
+        name_position = (width//2, (height//2)+40)
+        draw.text(name_position, str(name), fill="navy", font=font_name, anchor='mm')
+        output_path = os.path.join(output_folder, "certificate_" + str(name).replace(" ", "_") + ".png")
+        certificate.save(output_path)
+        return output_path
+    # Assuming only PNG/JPG for individual, as PPTX might be complex for individual download
 
 # Functions for generating Transcripts (unchanged)
 def TranscriptExcel_data(filename):
@@ -149,17 +172,43 @@ def generate_transcripts(excel_file, template_file, docx_directory, pdf_director
     os.makedirs(docx_directory, exist_ok=True)
     os.makedirs(pdf_directory, exist_ok=True)
     data_rows = TranscriptExcel_data(excel_file)
+    generated_files = []
 
     for row in data_rows[1:]:
         if option in ["doc", "both"]:
             doc_path = TranscriptDocument(template_file, docx_directory, row)
+            generated_files.append(doc_path)
         if option in ["pdf", "both"]:
             if option == "pdf":
                 doc_path = TranscriptDocument(template_file, pdf_directory, row)
-            TranscriptPdf(doc_path, pdf_directory)
+            pdf_path = TranscriptPdf(doc_path, pdf_directory)
+            generated_files.append(pdf_path)
             if option == "pdf":
                 os.remove(doc_path)
     print("All files for option '{}' have been generated!".format(option))
+    return generated_files
+
+# Placeholder for associate generation (assuming similar to transcripts)
+def generate_associate(excel_file, template_file, docx_directory, pdf_directory, option):
+    # Implement similar to generate_transcripts if needed
+    # For now, placeholder
+    os.makedirs(docx_directory, exist_ok=True)
+    os.makedirs(pdf_directory, exist_ok=True)
+    # Assuming same structure as transcripts
+    data_rows = TranscriptExcel_data(excel_file)
+    generated_files = []
+    for row in data_rows[1:]:
+        if option in ["doc", "both"]:
+            doc_path = TranscriptDocument(template_file, docx_directory, row)  # Reuse TranscriptDocument
+            generated_files.append(doc_path)
+        if option in ["pdf", "both"]:
+            if option == "pdf":
+                doc_path = TranscriptDocument(template_file, pdf_directory, row)
+            pdf_path = TranscriptPdf(doc_path, pdf_directory)
+            generated_files.append(pdf_path)
+            if option == "pdf":
+                os.remove(doc_path)
+    return generated_files
 
 # Merged function to generate all documents (transcripts, certificates, associate)
 def generate_all(excel_transcript, template_transcript, excel_certificate, template_certificate, excel_associate, template_associate, option):
@@ -170,23 +219,23 @@ def generate_all(excel_transcript, template_transcript, excel_certificate, templ
     
     # Generate certificates
     output_folder_cert = 'Certificates'
-    generate_certificates(excel_certificate, template_certificate, output_folder_cert)
+    generate_certificates(excel_certificate, template_certificate, output_folder_cert, os.path.basename(template_certificate), option)
     
     # Generate associate
     docx_directory_associate = 'Associate_Documents'
     pdf_directory_associate = 'Associate_PDF'
-    GeneratAssociate(excel_associate, template_associate, docx_directory_associate, pdf_directory_associate, option)
+    generate_associate(excel_associate, template_associate, docx_directory_associate, pdf_directory_associate, option)
 
 @app.route('/')
 def home():
     return render_template('home.html')
 
-@app.route('/complete-info')
-def complete_info():
-    return render_template('complete_info.html')
+@app.route('/complete-info-multiple')
+def complete_info_multiple():
+    return render_template('complete_info_multiple.html')
 
-@app.route('/generate', methods=['POST'])
-def generate():
+@app.route('/generate-multipule', methods=['POST'])
+def generate_multiple():
     if request.method == 'POST':
         doc_type = request.form.get('doc_type')
         option = request.form.get('option')
@@ -196,7 +245,7 @@ def generate():
 
         if not template or not excel:
             flash('Please upload both template and Excel files.')
-            return redirect(url_for('complete_info'))
+            return redirect(url_for('complete_info_multiple'))
         
         template_filename = secure_filename(template.filename)
         excel_filename = secure_filename(excel.filename)
@@ -209,24 +258,92 @@ def generate():
             if doc_type == 'transcript':
                 docx_directory = 'Transcript_Doc'
                 pdf_directory = 'Transcript_PDF'
-                generate_transcripts(excel_path, template_path, docx_directory, pdf_directory, option)
+                generated_files = generate_transcripts(excel_path, template_path, docx_directory, pdf_directory, option)
             elif doc_type == 'certificate':
                 output_folder = 'Certificates'
-                generate_certificates(excel_path, template_path, output_folder,template_filename, option)
+                generated_files = generate_certificates(excel_path, template_path, output_folder, template_filename, option)
             else:
                 flash('Invalid document type.')
-                return redirect(url_for('complete_info'))
+                return redirect(url_for('complete_info_multiple'))
             
             flash('Documents generated successfully!')
-            return redirect(url_for('preview'))
+            return redirect(url_for('view'))
         except Exception as e:
             flash(f'An error occurred: {str(e)}')
-            return redirect(url_for('complete_info'))
+            return redirect(url_for('complete_info_multiple'))
 
-@app.route('/preview')
-def preview():
-    files = os.listdir(app.config['UPLOAD_FOLDER'])
-    return render_template('preview.html', files=files)
+@app.route('/complete-info-certificate')
+def complete_info_certificate():
+    return render_template('complete-certificate.html')
+
+@app.route('/complete-info-certificate-individual')
+def complete_info_certificate_individual():
+    return render_template('complete-certificate-individual.html')
+
+@app.route('/generate_certificate_individual', methods=['POST'])
+def generate_certificate_individual():
+    first_name = request.form.get('first_name')
+    last_name = request.form.get('last_name')
+    # Use default template
+    template_path = os.path.join(app.root_path, 'template', 'certificate_template.png')  # Updated to use 'template/certificate_template.png'
+    template_filename = os.path.basename(template_path)
+    
+    if not first_name or not last_name:
+        flash('Please provide both first and last name.')
+        return redirect(url_for('complete_info_certificate_individual'))
+    
+    if not os.path.exists(template_path):
+        flash('Default certificate template not found. Please contact admin.')
+        return redirect(url_for('complete_info_certificate_individual'))
+    
+    name = first_name + " " + last_name
+    output_folder = 'Certificates_Individual'
+    output_path = generate_individual_certificate(name, template_path, output_folder, template_filename)
+    
+    return send_file(output_path, as_attachment=True, download_name=f"certificate_{first_name}_{last_name}.png")
+
+
+@app.route('/complet-info-transcript')
+def complete_info_transcript():
+    return render_template('complete_transcript.html')
+
+
+@app.route('/download-zip/<doc_type>')
+def download_zip(doc_type):
+    if doc_type == 'certificate':
+        folder = 'Certificates'
+    elif doc_type == 'transcript':
+        folder = 'Transcript_PDF'  # Assuming PDF for zip
+    else:
+        flash('Invalid type')
+        return redirect(url_for('view'))
+    
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for root, dirs, files in os.walk(folder):
+            for file in files:
+                zip_file.write(os.path.join(root, file), file)
+    zip_buffer.seek(0)
+    return send_file(zip_buffer, as_attachment=True, download_name=f'{doc_type}_files.zip', mimetype='application/zip')
+
+@app.route('/download_file/<dir_name>/<filename>')
+def download_file(dir_name, filename):
+    file_path = os.path.join(dir_name, filename)
+    if os.path.exists(file_path):
+        return send_file(file_path, as_attachment=True)
+    else:
+        flash('File not found.')
+        return redirect(url_for('view'))
+
+@app.route('/view')
+def view():
+    # List generated files from output directories
+    generated_files = {}
+    directories = ['Transcript_Doc', 'Transcript_PDF', 'Certificates', 'Associate_Documents', 'Associate_PDF', 'Certificates_Individual']
+    for dir_name in directories:
+        if os.path.exists(dir_name):
+            generated_files[dir_name] = os.listdir(dir_name)
+    return render_template('view.html', generated_files=generated_files)
 
 if __name__ == '__main__':
     app.run(debug=True)
