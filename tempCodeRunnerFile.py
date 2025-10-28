@@ -1,1 +1,0 @@
-/complet-info-transcript

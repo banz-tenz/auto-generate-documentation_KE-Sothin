@@ -36,18 +36,26 @@ This application allows users to upload Excel files containing student data and 
 4. **Directory Structure**:
    - Create the following folders in your project directory:
      ```
-     Auto Generate Documentation/
-     ├── app.py
-     ├── requirements.txt
-     ├── templates/
-     │   ├── home.html
-     │   ├── complete_info.html
-     │   └── preview.html
-     ├── static/
-     │   └── style/
-     │       └── main.css
-     ├── uploads/  # Created automatically
-     └── arialbd.ttf
+     AUTO GENERATE DOCUMENTATOIN_FINAL
+      ├── static
+      │   ├── images
+      │   └── style
+      │       └── main.css
+      ├── template
+      └── templates
+         ├── complete_certificate_info_multiple.html
+         ├── complete_transcript.html
+         ├── complete-certificate-individual.html
+         ├── complete-certificate.html
+         ├── home.html
+         └── view.html
+      ├── app.py
+      ├── helper.py
+      ├── README.md
+      ├── requirement.txt
+      ├── student_data_Transcript.xlsx
+      ├── student_names_certificate_test.xlsx
+      └── student_names_certificate.xlsx
      ```
 
 ## Usage
@@ -63,7 +71,7 @@ This application allows users to upload Excel files containing student data and 
    - **Home Page** (`/`): Welcome page with a link to start.
    - **Complete Info Page** (`/complete-info`): Form to select document type, upload template and Excel files, and choose output format.
    - **Generate** (`/generate`): Processes uploads and generates documents.
-   - **Preview** (`/preview`): Lists uploaded/generated files.
+   - **view** (`/view`): Lists uploaded/generated files.
 
 3. **Excel File Format**:
    - **Certificates**: First column after header should contain names (e.g., "Name").
