@@ -13,6 +13,130 @@ from pptx.util import Pt  # For font size in points
 from pptx.dml.color import RGBColor  # For font color
 import zipfile
 import io
+# from flask_mysqldb import MySql
+import mysql.connector
+
+db_config = {
+    'host': 'localhost',
+    'user': 'root',
+    'password': '',
+    'database': 'user_result'
+}
+
+# Function to insert multiple certificates into MySQL (assuming for bulk generation)
+def insert_multiple_certificate(nb, first_name, last_name, certificate_filename, certificate_file):
+    conn = None
+    cursor = None
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+        query = "INSERT INTO certificates (nb, first_name, last_name, certificate_filename, certificate_file) VALUES (%s, %s, %s, %s, %s)"
+        cursor.execute(query, (nb, first_name, last_name, certificate_filename, certificate_file))
+        conn.commit()
+    except mysql.connector.Error as err:
+        print(f"Error inserting into DB: {err}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn and conn.is_connected():
+            conn.close()
+
+# Function to insert individual certificate into MySQL
+def insert_individual_certificate(nb, first_name, last_name, certificate_filename, certificate_file):
+    conn = None
+    cursor = None
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+        query = "INSERT INTO individual_certificate (nb, first_name, last_name, certificate_filename, certificate_file) VALUES (%s, %s, %s, %s, %s)"
+        cursor.execute(query, (nb, first_name, last_name, certificate_filename, certificate_file))
+        conn.commit()
+    except mysql.connector.Error as err:
+        print(f"Error inserting into DB: {err}")
+    finally:
+        if cursor:
+            cursor.close()
+        if conn and conn.is_connected():
+            conn.close()
+
+# Function to get the next nb (assuming nb is auto-increment or we need to calculate it)
+def get_next_nb():
+    conn = None
+    cursor = None
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+        cursor.execute("SELECT MAX(nb) FROM individual_certificate")  # Assuming nb is shared or per table; adjust if needed
+        result = cursor.fetchone()
+        if result[0] is None:
+            return 1
+        else:
+            return result[0] + 1
+    except mysql.connector.Error as err:
+        print(f"Error getting next nb: {err}")
+        return 1  # Default to 1 if error
+    finally:
+        if cursor:
+            cursor.close()
+        if conn and conn.is_connected():
+            conn.close()
+
+# Function to get all individual certificates from MySQL
+def get_individual_certificates_from_db():
+    conn = None
+    cursor = None
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM individual_certificate")
+        results = cursor.fetchall()
+        return results
+    except mysql.connector.Error as err:
+        print(f"Error fetching individual certificates from DB: {err}")
+        return []
+    finally:
+        if cursor:
+            cursor.close()
+        if conn and conn.is_connected():
+            conn.close()
+
+# Function to get all certificates from MySQL
+def get_certificates_from_db():
+    conn = None
+    cursor = None
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM certificates")
+        results = cursor.fetchall()
+        return results
+    except mysql.connector.Error as err:
+        print(f"Error fetching certificates from DB: {err}")
+        return []
+    finally:
+        if cursor:
+            cursor.close()
+        if conn and conn.is_connected():
+            conn.close()
+
+# Function to get all transcripts from MySQL
+def get_transcripts_from_db():
+    conn = None
+    cursor = None
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT * FROM Transcript")
+        results = cursor.fetchall()
+        return results
+    except mysql.connector.Error as err:
+        print(f"Error fetching transcripts from DB: {err}")
+        return []
+    finally:
+        if cursor:
+            cursor.close()
+        if conn and conn.is_connected():
+            conn.close()
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'  # Change this to a secure key
@@ -41,6 +165,8 @@ def generate_certificates(excel_file, template_file, output_folder, template_fil
             output_path = os.path.join(output_folder, "certificate_" + str(name) + ".png")
             certificate.save(output_path)
             generated_files.append(output_path)
+            # Optionally insert into DB for multiple certificates
+            # Assuming name is full name, split if needed; for now, skip or adjust
             print("Certificate generated for {} and saved to {}".format(name, output_path))
         elif template_filename.lower().endswith(".pptx"):
             # Use python-pptx for PPTX templates with placeholders
@@ -188,44 +314,6 @@ def generate_transcripts(excel_file, template_file, docx_directory, pdf_director
     print("All files for option '{}' have been generated!".format(option))
     return generated_files
 
-# Placeholder for associate generation (assuming similar to transcripts)
-def generate_associate(excel_file, template_file, docx_directory, pdf_directory, option):
-    # Implement similar to generate_transcripts if needed
-    # For now, placeholder
-    os.makedirs(docx_directory, exist_ok=True)
-    os.makedirs(pdf_directory, exist_ok=True)
-    # Assuming same structure as transcripts
-    data_rows = TranscriptExcel_data(excel_file)
-    generated_files = []
-    for row in data_rows[1:]:
-        if option in ["doc", "both"]:
-            doc_path = TranscriptDocument(template_file, docx_directory, row)  # Reuse TranscriptDocument
-            generated_files.append(doc_path)
-        if option in ["pdf", "both"]:
-            if option == "pdf":
-                doc_path = TranscriptDocument(template_file, pdf_directory, row)
-            pdf_path = TranscriptPdf(doc_path, pdf_directory)
-            generated_files.append(pdf_path)
-            if option == "pdf":
-                os.remove(doc_path)
-    return generated_files
-
-# Merged function to generate all documents (transcripts, certificates, associate)
-def generate_all(excel_transcript, template_transcript, excel_certificate, template_certificate, excel_associate, template_associate, option):
-    # Generate transcripts
-    docx_directory_transcript = 'Transcript_Doc'
-    pdf_directory_transcript = 'Transcript_PDF'
-    generate_transcripts(excel_transcript, template_transcript, docx_directory_transcript, pdf_directory_transcript, option)
-    
-    # Generate certificates
-    output_folder_cert = 'Certificates'
-    generate_certificates(excel_certificate, template_certificate, output_folder_cert, os.path.basename(template_certificate), option)
-    
-    # Generate associate
-    docx_directory_associate = 'Associate_Documents'
-    pdf_directory_associate = 'Associate_PDF'
-    generate_associate(excel_associate, template_associate, docx_directory_associate, pdf_directory_associate, option)
-
 @app.route('/')
 def home():
     return render_template('home.html')
@@ -296,17 +384,24 @@ def generate_certificate_individual():
         flash('Default certificate template not found. Please contact admin.')
         return redirect(url_for('complete_info_certificate_individual'))
     
-    name = first_name + " " + last_name
+    name = first_name.upper() + " " + last_name.upper()
     output_folder = 'Certificates_Individual'
     output_path = generate_individual_certificate(name, template_path, output_folder, template_filename)
     
-    return send_file(output_path, as_attachment=True, download_name=f"certificate_{first_name}_{last_name}.png")
-
+    # Get next nb
+    nb = get_next_nb()
+    certificate_filename = os.path.basename(output_path)
+    certificate_file = name  # Assuming certificate_file is the full name
+    
+    # Insert into DB
+    insert_individual_certificate(nb, first_name.upper(), last_name.upper(), certificate_filename, certificate_file)
+    
+    flash('Certificate generated successfully!')
+    return redirect(url_for('view'))
 
 @app.route('/complet-info-transcript')
 def complete_info_transcript():
     return render_template('complete_transcript.html')
-
 
 @app.route('/download-zip/<doc_type>')
 def download_zip(doc_type):
@@ -337,13 +432,17 @@ def download_file(dir_name, filename):
 
 @app.route('/view')
 def view():
-    # List generated files from output directories
+    # Get data from all tables
+    individual_certificates = get_individual_certificates_from_db()
+    certificates = get_certificates_from_db()
+    transcripts = get_transcripts_from_db()
+    # For other files, still list from directories if needed
     generated_files = {}
-    directories = ['Transcript_Doc', 'Transcript_PDF', 'Certificates', 'Associate_Documents', 'Associate_PDF', 'Certificates_Individual']
+    directories = ['Transcript_Doc', 'Transcript_PDF', 'Certificates', 'Associate_Documents', 'Associate_PDF']
     for dir_name in directories:
         if os.path.exists(dir_name):
             generated_files[dir_name] = os.listdir(dir_name)
-    return render_template('view.html', generated_files=generated_files)
+    return render_template('view.html', generated_files=generated_files, individual_certificates=individual_certificates, certificates=certificates, transcripts=transcripts)
 
 if __name__ == '__main__':
     app.run(debug=True)
