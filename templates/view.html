@@ -6,10 +6,62 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style/main.css') }}">
 </head>
-<body >
+<body>
     <div id="background">
         <div class="container mt-5">
             <h1 class="text-center">Generated Documents</h1>
+            
+            <!-- Display Individual Certificates from Database -->
+            {% if individual_certificates %}
+                <h3>Individual Certificates</h3>
+                <ul class="list-group mb-3">
+                    {% for cert in individual_certificates %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            NB: {{ loop.index }} - {{ cert.first_name }} {{ cert.last_name }} - Certificate: {{ cert.certificate_file }}
+                            {% if cert.certificate_filename %}
+                                <a href="{{ url_for('download_file', dir_name='Certificates_Individual', filename=cert.certificate_filename) }}" class="btn btn-sm btn-outline-primary">Download</a>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+                <br><br>
+            {% endif %}
+            
+            <!-- Display Certificates from Database -->
+            {% if certificates %}
+                <h3>Certificates</h3>
+                <ul class="list-group mb-3">
+                    {% for cert in certificates %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            NB: {{ loop.index }} - {{ cert.first_name }} {{ cert.last_name }} - Certificate: {{ cert.certificate_file }}
+                            {% if cert.certificate_filename %}
+                                <a href="{{ url_for('download_file', dir_name='Certificates', filename=cert.certificate_filename) }}" class="btn btn-sm btn-outline-primary">Download</a>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+                <br><br>
+            {% endif %}
+            
+            <!-- Display Transcripts from Database -->
+            {% if transcripts %}
+                <h3>Transcripts</h3>
+                <ul class="list-group mb-3">
+                    {% for trans in transcripts %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <!-- Assuming columns like id, student_id, first_name, etc.; adjust based on your table structure -->
+                            Student ID: {{ trans.student_id }} - {{ trans.first_name }} {{ trans.last_name }}
+                            <!-- Add download link if filename column exists -->
+                            {% if trans.filename %}  <!-- Assuming 'filename' column exists in Transcript table -->
+                                <a href="{{ url_for('download_file', dir_name='Transcript_PDF', filename=trans.filename) }}" class="btn btn-sm btn-outline-primary">Download</a>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                </ul>
+                <br><br>
+            {% endif %}
+            
+            <!-- Display Other Generated Files from Directories -->
             {% if generated_files %}
                 {% for dir_name, files in generated_files.items() %}
                     <h3>{{ dir_name.replace('_', ' ') }}</h3>
@@ -17,7 +69,6 @@
                         {% for file in files %}
                             <li class="list-group-item d-flex justify-content-between align-items-center">
                                 {{ file }}
-                                <!-- Add download link if needed, e.g., for individual files -->
                                 <a href="{{ url_for('download_file', dir_name=dir_name, filename=file) }}" class="btn btn-sm btn-outline-primary">Download</a>
                             </li>
                         {% endfor %}
@@ -30,9 +81,12 @@
                     {% endif %}
                     <br><br>
                 {% endfor %}
-            {% else %}
+            {% endif %}
+            
+            {% if not individual_certificates and not certificates and not transcripts and not generated_files %}
                 <p class="text-center">No documents generated yet.</p>
             {% endif %}
+            
             <a href="{{ url_for('home') }}" class="btn btn-secondary mt-3">Back to Home</a>
         </div>
     </div>
