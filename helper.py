@@ -8,37 +8,26 @@ db_config = {
     'database': 'user_result'
 }
 
-db_connection = None
-cursor = None
-try:
-    # Corrected syntax: call the connect() function within the module
-    db_connection = mysql.connector.connect(**db_config)
-    
-    # Check if the connection was successful
-    if db_connection.is_connected():
-        print("Connected to MySQL database successfully!")
-        
-        # Create a cursor object
-        cursor = db_connection.cursor()
-        
-        # Execute the SQL query
-        cursor.execute("SELECT * FROM certificates")
-        
-        # Fetch all results
-        data = cursor.fetchall()
-        
-        # Print the data
-        print("Fetched data from 'certificates' table:")
-        print(data)
+def insertIntoTranscript(name, file_name, file ):
+    conn = None
+    cursor = None
+    try:
+        conn = mysql.connector.connect(**db_config)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO transcript (name, file_name, file) VALUES(%s,%s,%s)",(name, file_name, file))
+        conn.commit()
+    except mysql.connector.Error as e:
+        print(f'Error inserting into DB {e}')
+    finally:
+        if cursor:
+            cursor.close()
+        if conn and conn.is_connected():
+            conn.close()
 
-except mysql.connector.Error as err:
-    print(f"Error: {err}")
 
-finally:
-    # Always ensure the cursor and connection are closed
-    if cursor is not None:
-        cursor.close()
-    if db_connection is not None and db_connection.is_connected():
-        db_connection.close()
-        print("MySQL connection is closed.")
+name = 'sothin'
+file_name = 'sothin.docx'
+file = 'Transcript/sothin.docx'
 
+
+insertIntoTranscript(name, file_name, file)
