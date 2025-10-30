@@ -6,7 +6,7 @@
     margin: 0;
     box-sizing: border-box;
     font-family: "Roboto", sans-serif;
-    color: white;
+    /* color:; */
 }
 
 #background {
@@ -26,6 +26,11 @@
     overflow-y: auto; /* Changed to auto for better scrolling when content exceeds height */
     max-height: 80vh; /* Added max-height to prevent overflow and ensure scrolling works */
     margin-top: 20px; /* Added margin for better spacing from top */
+}
+
+
+h1 {
+    color: white;
 }
 
 

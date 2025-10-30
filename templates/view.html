@@ -1,111 +1,265 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
+  <head>
+    <meta charset="UTF-8" />
     <title>Generated Documents</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style/main.css') }}">
-</head>
-<body>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style/main.css') }}"
+    />
+  </head>
+  <body>
     <div id="background">
-        <div class="container mt-5">
-            <h1 class="text-center">Generated Documents</h1>
-            
-            <!-- Display Individual Certificates from Database -->
-            {% if individual_certificates %}
-                <h3>Individual Certificates</h3>
-                <ul class="list-group mb-3">
-                    {% for cert in individual_certificates %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            NB: {{ loop.index }} - {{ cert.first_name }} {{ cert.last_name }} - Certificate: {{ cert.certificate_file }}
-                            {% if cert.certificate_filename %}
-                                <a href="{{ url_for('download_file', dir_name='Certificates_Individual', filename=cert.certificate_filename) }}" class="btn btn-sm btn-outline-primary">Download</a>
-                            {% endif %}
-                        </li>
-                    {% endfor %}
-                </ul>
-                <br><br>
-            {% endif %}
-            
-            <!-- Display Certificates from Database -->
-            {% if certificates %}
-                <h3>Certificates</h3>
-                <ul class="list-group mb-3">
-                    {% for cert in certificates %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            NB: {{ loop.index }} - {{ cert.first_name }} {{ cert.last_name }} - Certificate: {{ cert.certificate_file }}
-                            {% if cert.certificate_filename %}
-                                <a href="{{ url_for('download_file', dir_name='Certificates', filename=cert.certificate_filename) }}" class="btn btn-sm btn-outline-primary">Download</a>
-                            {% endif %}
-                        </li>
-                    {% endfor %}
-                </ul>
-                <br><br>
-            {% endif %}
-            
-            <!-- Display Transcripts from Database -->
-            {% if transcripts %}
-                <h3>Transcripts</h3>
-                <ul class="list-group mb-3">
-                    {% for trans in transcripts %}
-                        <li class="list-group-item d-flex justify-content-between align-items-center">
-                            <!-- Assuming columns like id, student_id, first_name, etc.; adjust based on your table structure -->
-                            Student ID: {{ trans.student_id }} - {{ trans.first_name }} {{ trans.last_name }}
-                            <!-- Add download link if filename column exists -->
-                            {% if trans.filename %}  <!-- Assuming 'filename' column exists in Transcript table -->
-                                <a href="{{ url_for('download_file', dir_name='Transcript_PDF', filename=trans.filename) }}" class="btn btn-sm btn-outline-primary">Download</a>
-                            {% endif %}
-                        </li>
-                    {% endfor %}
-                </ul>
-                <br><br>
-            {% endif %}
-            
-            <!-- Display Other Generated Files from Directories -->
-            {% if generated_files %}
-                {% for dir_name, files in generated_files.items() %}
-                    <h3>{{ dir_name.replace('_', ' ') }}</h3>
-                    <ul class="list-group mb-3">
-                        {% for file in files %}
-                            <li class="list-group-item d-flex justify-content-between align-items-center">
-                                {{ file }}
-                                <a href="{{ url_for('download_file', dir_name=dir_name, filename=file) }}" class="btn btn-sm btn-outline-primary">Download</a>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                    <!-- Add zip download for certificates and transcripts -->
-                    {% if dir_name == 'Certificates' %}
-                        <a href="{{ url_for('download_zip', doc_type='certificate') }}" class="btn btn-primary">Download All Certificates as ZIP</a>
-                    {% elif dir_name == 'Transcript_PDF' %}
-                        <a href="{{ url_for('download_zip', doc_type='transcript') }}" class="btn btn-primary">Download All Transcripts as ZIP</a>
-                    {% endif %}
-                    <br><br>
-                {% endfor %}
-            {% endif %}
-            
-            {% if not individual_certificates and not certificates and not transcripts and not generated_files %}
-                <p class="text-center">No documents generated yet.</p>
-            {% endif %}
-            
-            <a href="{{ url_for('home') }}" class="btn btn-secondary mt-3">Back to Home</a>
+      <div class="container mt-5">
+        <h1 class="text-center">Generated Documents</h1>
+
+        <!-- Display Individual Certificates from Database -->
+        {% if individual_certificates %}
+        <div class="card mb-4">
+          <div class="card-header">
+            <h3>Individual Certificates</h3>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Certificate</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for cert in individual_certificates %}
+                  <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ cert.first_name }}</td>
+                    <td>{{ cert.last_name }}</td>
+                    <td>{{ cert.certificate_file }}</td>
+                    <td>
+                      {% if cert.certificate_filename %}
+                      <a
+                        href="{{ url_for('download_file', dir_name='Certificates_Individual', filename=cert.certificate_filename) }}"
+                        class="btn btn-sm btn-outline-primary"
+                        >Download</a
+                      >
+                      {% else %}
+                      <span class="text-muted">No file</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
+        {% endif %}
+
+        <!-- Display Bulk Certificates from Database -->
+        {% if certificates %}
+        <div class="card mb-4">
+          <div class="card-header">
+            <h3>Bulk Certificates</h3>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>First Name</th>
+                    <th>Last Name</th>
+                    <th>Certificate</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for cert in certificates %}
+                  <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ cert.first_name }}</td>
+                    <td>{{ cert.last_name }}</td>
+                    <td>{{ cert.certificate_file }}</td>
+                    <td>
+                      {% if cert.certificate_filename %}
+                      <a
+                        href="{{ url_for('download_file', dir_name='Certificates', filename=cert.certificate_filename) }}"
+                        class="btn btn-sm btn-outline-primary"
+                        >Download</a
+                      >
+                      {% else %}
+                      <span class="text-muted">No file</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Display Transcripts from Database -->
+        {% if transcripts %}
+        <div class="card mb-4">
+          <div class="card-header">
+            <h3>Transcripts</h3>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Student Name</th>
+                    <th>Filename</th>
+                    <th>File Size</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for transcript in transcripts %}
+                  <tr>
+                    <td>{{ loop.index }}</td>
+                    <td>{{ transcript.name }}</td>
+                    <td>
+                      {% if transcript.file_name %} {{ transcript.file_name }}
+                      {% else %}
+                      <span class="text-muted">No filename</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if transcript.file %} {{ transcript.file|length }}
+                      bytes {% else %}
+                      <span class="text-muted">No file</span>
+                      {% endif %}
+                    </td>
+                    <td>
+                      {% if transcript.file and transcript.file_name %}
+                      <!-- Determine the directory based on file extension -->
+                      {% if transcript.file_name.endswith('.pdf') %}
+                      <a
+                        href="{{ url_for('download_file', dir_name='Transcript_PDF', filename=transcript.file_name) }}"
+                        class="btn btn-sm btn-outline-primary"
+                        >Download PDF</a
+                      >
+                      {% elif transcript.file_name.endswith('.docx') %}
+                      <a
+                        href="{{ url_for('download_file', dir_name='Transcript_Doc', filename=transcript.file_name) }}"
+                        class="btn btn-sm btn-outline-primary"
+                        >Download DOC</a
+                      >
+                      {% else %}
+                      <a
+                        href="{{ url_for('download_file', dir_name='Transcript_PDF', filename=transcript.file_name) }}"
+                        class="btn btn-sm btn-outline-primary"
+                        >Download</a
+                      >
+                      {% endif %} {% else %}
+                      <span class="text-muted">No file</span>
+                      {% endif %}
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <!-- Download All Zip Files -->
+        <div class="card mb-4">
+          <div class="card-header">
+            <h3>Download All Files</h3>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              {% if certificates or individual_certificates %}
+              <div class="col-md-4 mb-2">
+                <a
+                  href="{{ url_for('download_zip', doc_type='certificate') }}"
+                  class="btn btn-success w-100"
+                  >Download All Certificates as ZIP</a
+                >
+              </div>
+              {% endif %} {% if transcripts %}
+              <div class="col-md-4 mb-2">
+                <a
+                  href="{{ url_for('download_zip', doc_type='transcript') }}"
+                  class="btn btn-info w-100"
+                  >Download All Transcripts as ZIP</a
+                >
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <!-- No Data Message -->
+        {% if not individual_certificates and not certificates and not
+        transcripts %}
+        <div class="alert alert-info text-center">
+          <h4>No documents generated yet.</h4>
+          <p>Generate some documents to see them listed here.</p>
+        </div>
+        {% endif %}
+
+        <!-- Statistics -->
+        <div class="card">
+          <div class="card-header">
+            <h4>Summary</h4>
+          </div>
+          <div class="card-body">
+            <div class="row text-center">
+              <div class="col-md-4">
+                <h5>{{ individual_certificates|length }}</h5>
+                <p class="text-muted">Individual Certificates</p>
+              </div>
+              <div class="col-md-4">
+                <h5>{{ certificates|length }}</h5>
+                <p class="text-muted">Bulk Certificates</p>
+              </div>
+              <div class="col-md-4">
+                <h5>{{ transcripts|length }}</h5>
+                <p class="text-muted">Transcripts</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-center mt-4">
+          <a href="{{ url_for('home') }}" class="btn btn-secondary"
+            >Back to Home</a
+          >
+        </div>
+      </div>
     </div>
-    <!-- Correct script for the NET effect -->
+
+    <!-- Background effect scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r121/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.net.min.js"></script>
 
     <script>
-        VANTA.NET({
-            el: "#background",
-            mouseControls: true,
-            touchControls: true,
-            gyroControls: false,
-            minHeight: 200.00,
-            minWidth: 200.00,
-            scale: 1.00,
-            scaleMobile: 1.00,
-            color: 0x5f3fff
-        });
+      VANTA.NET({
+        el: "#background",
+        mouseControls: true,
+        touchControls: true,
+        gyroControls: false,
+        minHeight: 200.0,
+        minWidth: 200.0,
+        scale: 1.0,
+        scaleMobile: 1.0,
+        color: 0x5f3fff,
+      });
     </script>
-</body>
+  </body>
 </html>
